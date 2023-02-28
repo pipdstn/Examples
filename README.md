@@ -6,3 +6,6 @@ This is a one-file program built to aid in [composition](https://cccbr.org.uk/wp
 
 ## Pipes
 This program was built when compiling my submission for a place at the National Centre for Computer Animation in Bournemouth. It is a simple OpenGL recreation of the classic  "Pipes" screensaver shipped with many Windows PCs running XP or earlier.
+
+## Lilypad Generator
+This MEL ([Maya](https://www.autodesk.co.uk/products/maya/overview) Embedded Language) script was written as part of a assignment in order to aid in the generation and random placement of background elements for a short animation. It allows for the dynamic generation and adjustment of lilypad "clusters", with the aim of integrating into a customary 3D modelling workflow.
