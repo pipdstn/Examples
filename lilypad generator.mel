@@ -1,7 +1,4 @@
 global proc showWindow() {
-    //The script job portions of this script were referenced from
-    //the work of Fumoto, Rina (2021)
-
     //ensure that only one window of this type is open at once
     if (`window -ex "lilypadGen"`) {
         deleteUI -window "lilypadGen";
