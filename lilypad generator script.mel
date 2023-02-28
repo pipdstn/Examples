@@ -1,0 +1,338 @@
+global proc showWindow() {
+    //The script job portions of this script were referenced from
+    //the work of Fumoto, Rina (2021)
+
+    //ensure that only one window of this type is open at once
+    if (`window -ex "lilypadGen"`) {
+        deleteUI -window "lilypadGen";
+    }
+
+    //query the current selection
+    string $cluster[] = `ls -sl`;
+
+    //set default slider values
+    int   $num     = 3;
+    float $rad     = 3;
+    float $minSize = 0.2;
+    float $maxSize = 1;
+    
+    //setup the window
+    $lilypadGenerator = `window -t "Lily pad Generator" -s 1 -wh 300 100 "lilypadGen"`;
+    columnLayout -adj true;
+    //if a cluster has already been generated and is currently 
+    //selected, we override the slider defaults with the 
+    //attribute values of the currently selected cluster
+    if (size($cluster) > 0) {
+        string $stub = `substring $cluster[0] 1 14`;
+        if ($stub == "lilypadCluster") {
+            $num     = `getAttr ($cluster[0] + ".numPads")`;
+            $rad     = `getAttr ($cluster[0] + ".radius")`;
+            $minSize = `getAttr ($cluster[0] + ".minSize")`;
+            $maxSize = `getAttr ($cluster[0] + ".maxSize")`;
+        }
+    }
+
+    //slider groups
+    intSliderGrp -label "# of Lilypads" 
+        -field true -fieldMinValue 1 -fieldMaxValue 10
+        -minValue 1 -maxValue 10 -value $num -dragCommand "updatePopulation()" -changeCommand "updatePopulation()" numPadsSlider;
+    floatSliderGrp -label "Cluster Radius" 
+        -field true -fieldMinValue 0.1 -fieldMaxValue 10
+        -minValue 0.1 -maxValue 10 -value $rad -dragCommand "rescale()" -changeCommand "rescale()" clusterRadiusSlider;
+    floatSliderGrp -label "Minimum size"
+        -field true -fieldMinValue 0 -fieldMaxValue 1
+        -minValue 0 -maxValue 1 -value $minSize -dragCommand "updateMinSize()" -changeCommand "updateMinSize()" minScaleSlider;
+    floatSliderGrp -label "Maximum size"
+        -field true -fieldMinValue 0 -fieldMaxValue 1.5
+        -minValue 0 -maxValue 1.5 -value $maxSize -dragCommand "updateMaxSize()" -changeCommand "updateMaxSize()"  maxScaleSlider;
+    
+    //buttons to rearrange the lily pads and generate a new cluster
+    button -l "Re-randomize lilypads" -w 300 -h 20 -c "redistPads()";
+    button -l "Generate new cluster!" -w 300 -h 20 -c "generateCluster()";
+
+    //display the window
+    showWindow $lilypadGenerator;
+}
+
+global proc generateLilypad() {
+    string $selected[] = `ls -sl`;
+    string $cluster;
+
+    //if generating in an existing cluster, get the name of the cluster
+    $parent = `listRelatives -parent $selected[0]`;
+    if (size($parent) > 0) {
+        $cluster = $parent[0];
+    } else {
+        $cluster = $selected[0];
+    }
+
+    float $rad     = `getAttr ($cluster + ".radius")`;
+    float $minSize = `getAttr ($cluster + ".minSize")`;
+    float $maxSize = `getAttr ($cluster + ".maxSize")`;
+
+    //============LILY PAD GENERATION===============
+    //step 1 - create a polygon disc at the origin and store its name
+    polyDisc -sides 3 -subdivisionMode 4 -subdivisions 3 -radius 1;
+    $selected = `ls -sl`;
+    
+    //step 2 - create the "slit" in the lily pad by deleting/merging
+    //         specific edges and vertices in the poly disc mesh
+    select -r ($selected[0] + ".e[27]");
+    select -tgl ($selected[0] + ".e[41]");
+    doDelete;
+    select -r ($selected[0] + ".vtx[3]");
+    select -tgl ($selected[0] + ".vtx[29]");
+    select -tgl ($selected[0] + ".vtx[9]");
+    MergeToCenter;
+    move -r 0 0 -0.375832 ;
+    
+    //step 3 - generate the lily pad's random orientation and size
+    //         within the bounds specified by the attributes
+    //         of the parent cluster
+    float $randX = rand(-$rad, $rad);
+    float $randZ = rand(-$rad, $rad);
+    float $randRot = rand(0, 360);
+    float $randScale = rand($minSize, $maxSize);
+
+    //step 4 - set the corresponding attributes of the lily pad
+    //         to the values generated in step 3
+    setAttr ($selected[0] + ".translateX") $randX;
+    setAttr ($selected[0] + ".translateZ") $randZ;
+    setAttr ($selected[0] + ".rotateY") $randRot;
+    setAttr ($selected[0] + ".scaleX") $randScale;
+    setAttr ($selected[0] + ".scaleZ") $randScale;        
+    select -r $cluster;
+}
+
+global proc generateCluster() {
+    //kill the current script job to prevent window shenanigans
+    scriptJob -killAll -force;
+
+    //query the slider values - these will be used
+    //to set the corresponding cluster attributes
+    int $num       = `intSliderGrp -query -value numPadsSlider`;
+    float $rad     = `floatSliderGrp -query -value clusterRadiusSlider`;
+    float $minSize = `floatSliderGrp -query -value minScaleSlider`;
+    float $maxSize = `floatSliderGrp -query -value maxScaleSlider`;
+
+    //============CLUSTER GENERATION==============
+    //step 1 - create an empty group with the specified name format
+    //         and store its name in $cluster
+    group -em -name "lilypadCluster1";
+    $cluster = `ls -sl`;
+
+    //step 2 - set cluster pivots to the origin
+    xform -ws -piv 0 0 0;
+
+    //step 3 - create attributes for the cluster
+    addAttr -ln numPads;
+    addAttr -ln radius;
+    addAttr -ln minSize;
+    addAttr -ln maxSize;
+
+    //step 4 - set values for the attributes
+    setAttr ($cluster[0] + ".numPads") $num;
+    setAttr ($cluster[0] + ".radius")  $rad;
+    setAttr ($cluster[0] + ".minSize") $minSize;
+    setAttr ($cluster[0] + ".maxSize") $maxSize;
+
+    //step 5 - generate the lilypads, then parent them to 
+    //         the cluster and rename them sequentially
+    for ($i = 0; $i < $num; $i++) {
+        generateLilypad();
+        parent -relative pDisc1 $cluster[0];
+        rename pDisc1 ("lilypad" + ($i + 1));
+    }
+    
+    //reactivate the script job and select the new cluster to update the window
+    scriptJob -e "SelectionChanged" "updateWindow()" -protected;
+    select -r $cluster[0];
+}
+
+//This procedure is used to change the number of lilypads in an existing cluster
+global proc updatePopulation() {
+    string $cluster[] = `ls -sl`;
+
+    //the following nested if statements are to prevent the procedure
+    //from executing if we do not currently have a cluster selected
+
+    if (size($cluster) > 0) {
+        string $stub = `substring $cluster[0] 1 14`;
+        if ($stub == "lilypadCluster") {
+            //kill the current script job etc etc
+            scriptJob -killAll -force;
+     
+            //list the lilypads
+            string $pads[] = `listRelatives`;
+            
+            int $currentNum = `getAttr ($cluster[0] + ".numPads")`; 
+            int $newNum     = `intSliderGrp -query -value numPadsSlider`;
+
+            //add any new lilypads required...
+            if ($currentNum < $newNum) {
+                for ($i = 0; $i < ($newNum - $currentNum); $i++) {
+                    generateLilypad();
+                    parent -relative pDisc1 $cluster[0];
+                    rename pDisc1 ("lilypad" + ($currentNum + $i + 1));
+                }
+            }
+
+            //...or delete them
+            if ($currentNum > $newNum) {
+                for ($i = ($currentNum - 1); $i > ($newNum - 1); $i--) {
+                    select ($cluster[0] + "|" + $pads[$i]);
+                    doDelete;
+                }
+            }
+
+            //update the relevant cluster attribute
+            setAttr ($cluster[0] + ".numPads") $newNum;
+            
+            select $cluster[0];
+
+            //reactivate script job
+            scriptJob -e "SelectionChanged" "updateWindow()" -protected;
+        }
+    }
+}
+
+//The next two procedures both check whether the lilypads in the 
+//current cluster are within the size range defined by the sliders, and
+//rescale them if necessary to fit within that range
+global proc updateMinSize() {
+    string $cluster[] = `ls -sl`;
+
+    //the following nested if statements are to prevent the procedure
+    //from executing if we do not currently have a cluster selected
+    if (size($cluster) > 0) {
+        string $stub = `substring $cluster[0] 1 14`;
+        if ($stub == "lilypadCluster") {
+            //kill the current script job etc etc
+            scriptJob -killAll -force;
+     
+            //list the lilypads
+            string $pads[] = `listRelatives`;
+            
+            float $newMin = `floatSliderGrp -query -value minScaleSlider`;
+
+            //if any of the existing lily pads are under the new 
+            //minimum, rescale them to be the new minimum size
+            for ($i = 0; $i < size($pads); $i++) {
+                $scale = `getAttr ($cluster[0] + "|" + $pads[$i] + ".scaleX")`;
+                if ($scale < $newMin) {
+                    setAttr ($cluster[0] + "|" + $pads[$i] + ".scaleX") $newMin;
+                    setAttr ($cluster[0] + "|" + $pads[$i] + ".scaleZ") $newMin;
+                }
+            }
+            
+            //update the relevant cluster attribute
+            setAttr ($cluster[0] + ".minSize") $newMin;
+            select $cluster[0];
+
+            //reactivate script job
+            scriptJob -e "SelectionChanged" "updateWindow()" -protected;
+        }
+    }
+}
+
+global proc updateMaxSize() {
+    string $cluster[] = `ls -sl`;
+
+    //the following nested if statements are to prevent the procedure
+    //from executing if we do not currently have a cluster selected
+    if (size($cluster) > 0) {
+        string $stub = `substring $cluster[0] 1 14`;
+        if ($stub == "lilypadCluster") {
+            //kill the current script job etc etc
+            scriptJob -killAll -force;
+     
+            //list the lilypads
+            string $pads[] = `listRelatives`;
+            
+            float $newMax = `floatSliderGrp -query -value maxScaleSlider`;
+            float $min    = `floatSliderGrp -query -value minScaleSlider`;
+
+            //if any of the existing lilypads are over the new maximum,
+            //rescale them to be the new maximum size, unless that is
+            //below the minimum size
+            for ($i = 0; $i < size($pads); $i++) {
+                $scale = `getAttr ($cluster[0] + "|" + $pads[$i] + ".scaleX")`;
+                if ($scale > $newMax && $newMax > $min) {
+                    setAttr ($cluster[0] + "|" + $pads[$i] + ".scaleX") $newMax;
+                    setAttr ($cluster[0] + "|" + $pads[$i] + ".scaleZ") $newMax;
+                }
+            }
+
+            //update the relevant cluster attribute
+            setAttr ($cluster[0] + ".maxSize") $newMax;
+            select $cluster[0];
+
+            //reactivate script job
+            scriptJob -e "SelectionChanged" "updateWindow()" -protected;
+        }
+    }
+}
+
+//This procedure is used to update the cluster radius if a cluster already 
+//exists: the entire cluster is rescaled to fit inside the new radius
+global proc rescale() {
+    string $cluster[] = `ls -sl`;
+
+    //the following nested if statements are to prevent the procedure
+    //from executing if we do not currently have a cluster selected
+    if (size($cluster) > 0) {
+        string $stub = `substring $cluster[0] 1 14`;
+        if ($stub == "lilypadCluster") {
+            //list the lily pads
+            string $pads[] = `listRelatives`;
+
+            //calculate the rescale factor
+            float $currentRadius = `getAttr ($cluster[0] + ".radius")`;
+            float $newRadius = `floatSliderGrp -query -value clusterRadiusSlider`;
+            float $factor = $newRadius/$currentRadius;
+
+            //scale the (relative) transforms of each of the pads in the cluster by the rescale factor
+            for ($i = 0; $i < size($pads); $i++) {
+                float $x = `getAttr ($cluster[0] + "|" + $pads[$i] + ".translateX")`;
+                float $z = `getAttr ($cluster[0] + "|" + $pads[$i] + ".translateZ")`;
+                setAttr ($cluster[0] + "|" + $pads[$i] + ".translateX") ($x * $factor);
+                setAttr ($cluster[0] + "|" + $pads[$i] + ".translateZ") ($z * $factor);
+            }
+            setAttr ($cluster[0] + ".radius") $newRadius;
+        }
+    }
+}
+
+//This procedure randomly redistributes the existing lily pads within the specified cluster's radius,
+//allowing the user to quickly find a good arrangement without having to regenerate the cluster
+global proc redistPads() {
+    //query the cluster radius
+    float $rad = `floatSliderGrp -query -value clusterRadiusSlider`;
+
+    //get the name of the currently selected cluster
+    string $cluster[] = `ls -sl`;
+    //list all the pads in the currently selected cluster
+    string $pads[] = `listRelatives`;
+
+    for ($i = 0; $i < size($pads); $i++) {
+        float $randX = rand(-$rad, $rad);
+        float $randZ = rand(-$rad, $rad);
+        float $randRot = rand(0, 360);
+        
+        setAttr ($cluster [0] + "| " + $pads[$i] + ".translateX") $randX;
+        setAttr ($cluster [0] + "| " + $pads[$i] + ".translateZ") $randZ;
+        setAttr ($cluster [0] + "| " + $pads[$i] + ".rotateY") $randRot;
+    }
+}
+
+//update the window if it is currently open
+global proc updateWindow() {
+    if (`window -ex "lilypadGen"`) {
+        showWindow();
+    }
+}
+
+//create a script job to update the window when our selection changes
+scriptJob -e "SelectionChanged" "updateWindow()" -protected;
+
+showWindow();
