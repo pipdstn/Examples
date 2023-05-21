@@ -19,7 +19,7 @@ This program was built when compiling my submission for a place at the National 
 
 ![pipes](https://github.com/pipdstn/Examples/assets/23411544/2c31dd23-18ac-498b-b137-814bbab99b72)
 
-The following video demonstrates a simple robustness test for the program (TW: flashing imagery).
+The following video demonstrates a simple robustness test for the program, running in real time (TW: flashing imagery).
 
 https://github.com/pipdstn/Examples/assets/23411544/747f5813-9826-418d-b86c-e65b047f3c0a
 
