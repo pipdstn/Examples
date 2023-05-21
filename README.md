@@ -20,7 +20,7 @@ This MEL ([Maya](https://www.autodesk.co.uk/products/maya/overview) Embedded Lan
 ![lotus](https://github.com/pipdstn/Examples/assets/23411544/dfe9794f-4358-4d36-8cb2-cac5ac67a990)
 
 ## Snowflaker
-This C++ program allows the user to quickly generate randomised snowflakes using a naive DLA (diffusion-limited aggregation) model of crystal formation, and export point data in .geo form for use in SideFX Houdini. The program uses an OpenGL graphics library developed at the NCCA, called NGL, which must be installed in order to build it. The snowflaker.cpp code and corresponding header file include most of the relevant portions of algorithm code.
+This C++ program allows the user to quickly generate randomised snowflakes using a naive DLA (diffusion-limited aggregation) model of crystal formation, and export point data in .geo form for use in SideFX Houdini. The program uses an OpenGL graphics library developed at the NCCA, called NGL, which must be installed in order to build it. The snowflake.cpp code and corresponding header file include most of the relevant portions of algorithm code.
 
 https://github.com/pipdstn/Examples/assets/23411544/f7c7383b-2c90-413b-b26d-7bb5ebca3f6a
 
