@@ -8,7 +8,7 @@ This MEL ([Maya](https://www.autodesk.co.uk/products/maya/overview) Embedded Lan
 
 This tool was used as part of the production of a short solo animation produced in Maya (with some additional VFX in Adobe After Effects):
 
-https://youtu.be/zQZoyee9-mI
+https://www.youtube.com/watch?v=zQZoyee9-mI&ab_channel=PipD
 
 ## Snowflaker
 This C++ program allows the user to quickly generate randomised snowflakes using a naive DLA (diffusion-limited aggregation) model of crystal formation, and export point data in .geo form for use in SideFX Houdini. The program uses an OpenGL graphics library developed at the NCCA, called NGL, which must be installed in order to build it. The snowflake.cpp code and corresponding header file include most of the relevant portions of algorithm code.
